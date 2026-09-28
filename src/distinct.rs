@@ -127,6 +127,9 @@ impl Grid {
     pub fn onion(n: usize, h: usize) -> Grid {
         let ring = |&(x, y): &(usize, usize)| x.min(n - 1 - x).min(y).min(h - 1 - y);
         let mut xy: Vec<(usize, usize)> = (0..h).flat_map(|y| (0..n).map(move |x| (x, y))).collect();
+        // Within a ring the order matters little: ordering the boundary by
+        // distance from the nearest corner saved 4-14% of nodes on 13x13 and
+        // 14x14, so plain row-major order is kept.
         xy.sort_by_key(|c| (ring(c), c.1, c.0));
         let boundary = xy.iter().filter(|c| ring(c) == 0).count();
         Grid::build(n, h, Order::Onion, xy, boundary, boundary)
@@ -234,6 +237,8 @@ pub struct Options {
     /// Stop at the first solution.
     pub first_only: bool,
     pub order: Order,
+    /// Keep every solution (for cross-checking the reductions).
+    pub collect: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -252,6 +257,8 @@ pub struct Search<'a> {
     pub nodes: u64,
     pub solutions: u64,
     pub found: Option<Vec<usize>>,
+    /// All solutions, if `opts.collect`.
+    pub all: Vec<Vec<usize>>,
 }
 
 impl<'a> Search<'a> {
@@ -275,6 +282,7 @@ impl<'a> Search<'a> {
             nodes: 0,
             solutions: 0,
             found: None,
+            all: Vec::new(),
         }
     }
 
@@ -410,6 +418,9 @@ impl<'a> Search<'a> {
                 self.solutions += 1;
                 if self.found.is_none() {
                     self.found = Some(self.chosen.clone());
+                }
+                if self.opts.collect {
+                    self.all.push(self.chosen.clone());
                 }
                 return self.opts.first_only;
             }
@@ -552,6 +563,8 @@ pub struct Outcome {
     pub nodes: u64,
     /// One solution, as `(x, y)` points.
     pub example: Option<Vec<(usize, usize)>>,
+    /// All solutions, if `Options::collect`.
+    pub all: Vec<Vec<(usize, usize)>>,
 }
 
 /// Searches all (reduced) `k`-point sets of the `n x n` grid with `threads`
@@ -573,6 +586,7 @@ pub fn search(
         solutions: 0,
         nodes: 0,
         example: None,
+        all: Vec::new(),
     };
     for g in grids {
         let out = search_grid(&g, k, opts, threads, &|d, t, nodes, sols| {
@@ -580,6 +594,7 @@ pub fn search(
         });
         total.nodes += out.nodes;
         total.solutions += out.solutions;
+        total.all.extend(out.all);
         if total.example.is_none() {
             total.example = out.example;
         }
@@ -612,6 +627,7 @@ fn search_grid(
     let solutions = AtomicU64::new(0);
     let stop = AtomicBool::new(false);
     let example: Mutex<Option<Vec<usize>>> = Mutex::new(None);
+    let all: Mutex<Vec<Vec<usize>>> = Mutex::new(Vec::new());
     std::thread::scope(|scope| {
         for _ in 0..threads.max(1) {
             scope.spawn(|| {
@@ -625,6 +641,9 @@ fn search_grid(
                     solutions.fetch_add(s.solutions - s0, Ordering::Relaxed);
                     if let Some(f) = s.found.take() {
                         example.lock().unwrap().get_or_insert(f);
+                    }
+                    if !s.all.is_empty() {
+                        all.lock().unwrap().append(&mut s.all);
                     }
                     if halt {
                         stop.store(true, Ordering::Relaxed);
@@ -640,15 +659,52 @@ fn search_grid(
             });
         }
     });
-    let example = example
-        .into_inner()
-        .unwrap()
-        .map(|v| v.iter().map(|&p| g.xy[p]).collect());
+    let to_xy = |v: &Vec<usize>| v.iter().map(|&p| g.xy[p]).collect();
+    let example = example.into_inner().unwrap().as_ref().map(to_xy);
+    let all = all.into_inner().unwrap().iter().map(to_xy).collect();
     Outcome {
         solutions: solutions.into_inner(),
         nodes: nodes.into_inner(),
         example,
+        all,
     }
+}
+
+/// Normal form of a point set up to the symmetries of the square and
+/// translation: the least sorted point list over the 8 images, each
+/// translated to touch both axes.
+pub fn normal_form(pts: &[(usize, usize)]) -> Vec<(usize, usize)> {
+    let mut best: Option<Vec<(usize, usize)>> = None;
+    for t in 0..8 {
+        let img: Vec<(i64, i64)> = pts
+            .iter()
+            .map(|&(x, y)| {
+                let (x, y) = (x as i64, y as i64);
+                let (x, y) = if t & 4 != 0 { (y, x) } else { (x, y) };
+                (if t & 1 != 0 { -x } else { x }, if t & 2 != 0 { -y } else { y })
+            })
+            .collect();
+        let (mx, my) = (
+            img.iter().map(|p| p.0).min().unwrap(),
+            img.iter().map(|p| p.1).min().unwrap(),
+        );
+        let mut v: Vec<(usize, usize)> = img
+            .iter()
+            .map(|&(x, y)| ((x - mx) as usize, (y - my) as usize))
+            .collect();
+        v.sort_unstable();
+        if best.as_ref().map_or(true, |b| v < *b) {
+            best = Some(v);
+        }
+    }
+    best.unwrap_or_default()
+}
+
+/// Whether a point set spans `n` in width or height.
+pub fn spans(n: usize, pts: &[(usize, usize)]) -> bool {
+    let span =
+        |f: fn(&(usize, usize)) -> usize| pts.iter().map(f).max().unwrap() - pts.iter().map(f).min().unwrap() + 1;
+    span(|p| p.0) == n || span(|p| p.1) == n
 }
 
 /// Independent check that the points are distinct cells of the `n x n` grid
@@ -687,12 +743,14 @@ mod tests {
         mirror: false,
         first_only: true,
         order: Order::Rows,
+        collect: false,
     };
     const SPAN: Options = Options {
         span: true,
         mirror: true,
         first_only: true,
         order: Order::Rows,
+        collect: false,
     };
     const BOXED: Options = Options {
         order: Order::BoxedRows,
@@ -781,6 +839,32 @@ mod tests {
         let mut out = Vec::new();
         rec(n, k, 0, &mut Vec::new(), &mut out);
         out
+    }
+
+    #[test]
+    fn all_orders_find_the_same_symmetry_classes() {
+        // Every spanning solution class must be found by each reduced search.
+        for (n, k) in [(7, 6), (8, 7), (9, 8), (10, 9)] {
+            let classes = |opts: Options| -> std::collections::BTreeSet<Vec<(usize, usize)>> {
+                let out = search(
+                    n,
+                    k,
+                    Options {
+                        first_only: false,
+                        collect: true,
+                        ..opts
+                    },
+                    4,
+                    |_, _, _, _, _| {},
+                );
+                out.all.iter().filter(|s| spans(n, s)).map(|s| normal_form(s)).collect()
+            };
+            let reference = classes(ROWS);
+            assert!(!reference.is_empty());
+            for opts in [SPAN, BOXED, ONION] {
+                assert_eq!(classes(opts), reference, "{:?} n={n} k={k}", opts.order);
+            }
+        }
     }
 
     #[test]

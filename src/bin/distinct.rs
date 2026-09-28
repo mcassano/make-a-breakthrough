@@ -1,13 +1,13 @@
 //! Decide whether k points of the n x n grid can have pairwise distinct
 //! distances, by exhaustive search.
 
-use no3::distinct::{check, search, Options, Order};
+use no3::distinct::{check, normal_form, search, spans, Options, Order};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 const USAGE: &str = "\
-usage: distinct <n> <k> [--threads T] [--count] [--span] [--mirror] [--boxed | --onion] [--quiet]
+usage: distinct <n> <k> [--threads T] [--count] [--classes] [--span] [--mirror] [--boxed | --onion] [--quiet]
   Searches the k-point subsets of the n x n grid with pairwise distinct
   distances, normalised by translation to touch row 0 and column 0.
   --span    only sets that also touch column n-1 (exact when no k-set fits
@@ -17,7 +17,9 @@ usage: distinct <n> <k> [--threads T] [--count] [--span] [--mirror] [--boxed | -
             break both reflections of the box (implies --span --mirror)
   --onion   like --boxed, but search the boundary ring of the box first and
             break all its symmetries (8 for a square box)
-  --count   count all solutions instead of stopping at the first";
+  --count   count all solutions instead of stopping at the first
+  --classes also count the spanning solutions up to symmetry (a cross-check
+            between orders: all must report the same number)";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -42,11 +44,13 @@ fn main() -> ExitCode {
         Order::Rows
     };
     let reduced = order != Order::Rows || flag("--mirror");
+    let classes = flag("--classes");
     let opts = Options {
         span: flag("--span") || reduced,
         mirror: reduced,
-        first_only: !flag("--count"),
+        first_only: !flag("--count") && !classes,
         order,
+        collect: classes,
     };
     let quiet = flag("--quiet");
     let t = Instant::now();
@@ -62,6 +66,15 @@ fn main() -> ExitCode {
         }
     });
     let secs = t.elapsed().as_secs_f64();
+    if classes {
+        let set: std::collections::BTreeSet<_> =
+            out.all.iter().filter(|s| spans(n, s)).map(|s| normal_form(s)).collect();
+        println!(
+            "n={n} k={k}: {} solutions, {} classes of spanning sets under symmetry",
+            out.solutions,
+            set.len()
+        );
+    }
     let summary = format!(
         "{:.3e} nodes, {secs:.1}s, {threads} threads, {opts:?}",
         out.nodes as f64
