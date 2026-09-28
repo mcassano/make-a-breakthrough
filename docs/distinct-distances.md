@@ -79,6 +79,18 @@ work items shared by the worker threads.
   | 16 | 14 | impossible | none | 4.8e10 | 1,106 s |
   | 17 | 14 | impossible (Cariboni 2022) | see `results/distinct/chain.log` | | |
 
+* The symmetry reductions lose nothing on non-trivial instances.
+  `--classes` collects every solution and reduces it to a normal form under
+  the symmetries of the square and translation. The unreduced row-order
+  search and the onion search must then find the same spanning classes:
+
+  | n | k | row order, no reductions | onion order |
+  |---|---|---|---|
+  | 13 | 11 | 504 solutions, 63 classes | 63 solutions, 63 classes |
+  | 14 | 11 | 491,152 solutions, 61,331 classes | 61,337 solutions, 61,331 classes |
+
+  The unit tests also check that the class *sets* are equal for all four
+  orders on `n = 7..10`.
 * Every set the program reports is re-checked pair by pair in Rust and by
   `scripts/verify.py`, which shares no code with the search.
 
