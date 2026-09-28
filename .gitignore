@@ -1,0 +1,6 @@
+target/
+target-dev/
+/runs/
+*.cnf
+cdcl/no3_cdcl
+*.progress
