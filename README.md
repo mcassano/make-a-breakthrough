@@ -44,7 +44,7 @@ bounding box first so its symmetries can be broken early.
   | 12, 13, 14 | 11, 12, 12 | impossible | impossible |
   | 15 | 12 / 13 | possible / impossible | found / impossible |
   | 16 | 13 / 14 | possible / impossible | found / impossible |
-  | 17 | 14 | impossible (Cariboni 2022) | re-run in progress |
+  | 17 | 14 | impossible (Cariboni 2022) | impossible (4.3e11 nodes, 2.4 h) |
 
 * The symmetry reductions lose nothing: on 13 x 13 and 14 x 14 the unreduced
   search and the reduced search find exactly the same classes of solutions up

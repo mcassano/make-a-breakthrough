@@ -5,3 +5,5 @@ n=16 k=14: NONE (4.820e10 nodes, 1106.3s, 10 threads, Options { span: true, mirr
 === n=18 k=15 started 2026-09-28T21:48:51Z
 n=18 k=15: NONE (1.985e12 nodes, 44294.2s, 10 threads, Options { span: true, mirror: true, first_only: true, order: Onion })
 === n=17 k=14 started 2026-09-29T10:07:05Z
+n=17 k=14: NONE (4.339e11 nodes, 8671.3s, 10 threads, Options { span: true, mirror: true, first_only: true, order: Onion })
+=== chain finished 2026-09-29T12:31:36Z

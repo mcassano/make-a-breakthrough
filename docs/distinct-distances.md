@@ -78,7 +78,7 @@ work items shared by the worker threads.
   | 15 | 13 | impossible | none | 1.0e10 | 200 s |
   | 16 | 13 | possible | found | | |
   | 16 | 14 | impossible | none | 4.8e10 | 1,106 s |
-  | 17 | 14 | impossible (Cariboni 2022) | see `results/distinct/chain.log` | | |
+  | 17 | 14 | impossible (Cariboni 2022) | none | 4.339e11 | 8,671 s |
   | **18** | **15** | **open** | **none** | **1.985e12** | **44,294 s** |
 
 * The symmetry reductions lose nothing on non-trivial instances.
