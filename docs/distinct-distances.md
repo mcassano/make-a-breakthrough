@@ -11,7 +11,8 @@ that holds `k` such points).
 | A193838 | exact for `k <= 14` (a(14) = 18, F. A. C. Cariboni 2022); upper bounds a(15..18) <= 20, 22, 24, 27 |
 
 So 14 points fit in the `18 x 18` grid, but whether **15** do was open, and
-A271490(18) was not determined.
+A271490(18) was not determined. This search shows that they do not:
+**A271490(18) = 14** and **A193838(15) >= 19**.
 
 [A271490]: https://oeis.org/A271490
 [A193838]: https://oeis.org/A193838
@@ -78,6 +79,7 @@ work items shared by the worker threads.
   | 16 | 13 | possible | found | | |
   | 16 | 14 | impossible | none | 4.8e10 | 1,106 s |
   | 17 | 14 | impossible (Cariboni 2022) | see `results/distinct/chain.log` | | |
+  | **18** | **15** | **open** | **none** | **1.985e12** | **44,294 s** |
 
 * The symmetry reductions lose nothing on non-trivial instances.
   `--classes` collects every solution and reduces it to a normal form under

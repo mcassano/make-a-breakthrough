@@ -3,40 +3,56 @@
 Exact computer searches on classical problems about points in the `n x n`
 grid.
 
-## Result: distinct distances in the 18 x 18 grid
+## Result: A271490(18) = 14
 
-> **RESULT PENDING**: this section is filled in when the exhaustive search
-> for 15 points in the 18 x 18 grid (`results/distinct/chain.log`) finishes.
+**No 15 points of the 18 x 18 grid have pairwise distinct distances.**
 
 Erdős and Guy (1970) asked how many points of the `n x n` grid can have all
-pairwise distances different. The answers form OEIS [A271490]. They were
-known for `n <= 17`, the last value found by F. A. C. Cariboni in 2022. It was
-also known that 14 points fit in the `18 x 18` grid ([A193838], a(14) = 18),
-but not whether 15 do.
+pairwise distances different; the answers are OEIS [A271490]. They were known
+for `n <= 17` (the last value found by F. A. C. Cariboni in 2022), and it was
+known that 14 points fit in the `18 x 18` grid ([A193838], a(14) = 18). An
+exhaustive search shows that 15 points do not, so
+
+* **A271490(18) = 14** (new term), and
+* **A193838(15) >= 19** (15 points need at least a `19 x 19` grid; the known
+  upper bound is 20).
+
+```
+$ ./target/release/distinct 18 15 --onion
+n=18 k=15: NONE (1.985e12 nodes, 44294.2s, 10 threads, ...)
+```
+
+The search took 12.3 hours on a 10-core Apple M2 Pro (log:
+`results/distinct/chain.log`). It is in `src/distinct.rs`, and
+`docs/distinct-distances.md` explains why each reduction is exact. In short:
+bitset forward checking; normalisation by translation; restriction to sets
+spanning the full width, which is valid because no 15-set fits in
+`17 x 17`; and an "onion" order that searches the boundary of each possible
+bounding box first so its symmetries can be broken early.
 
 [A271490]: https://oeis.org/A271490
 [A193838]: https://oeis.org/A193838
 
-The search is in `src/distinct.rs`, and `docs/distinct-distances.md`
-explains why each reduction is exact. In short: bitset forward checking;
-normalisation by translation; restriction to sets spanning the full width,
-which is valid because no 15-set fits in `17 x 17`; and an "onion" order
-that searches the boundary of each possible bounding box first so its
-symmetries can be broken early. The onion order cuts the search 5-6x
-compared with row order at the sizes where both were run.
+### Why this can be trusted
 
-Before the new case, the program reproduced every known value it was run on:
+* The same program reproduced every known value it was run on, in both
+  directions:
 
-| n | k | known | this program |
-|---|---|---|---|
-| 2..10 | a(n), a(n)+1 | A271490 | reproduced (unit tests) |
-| 12, 13, 14 | 11, 12, 12 | impossible | impossible |
-| 15 | 12 / 13 | possible / impossible | found / impossible |
-| 16 | 13 / 14 | possible / impossible | found / see log |
-| 17 | 14 | impossible (Cariboni 2022) | see log |
+  | n | k | known (A271490) | this program |
+  |---|---|---|---|
+  | 2..10 | a(n), a(n)+1 | | reproduced (unit tests) |
+  | 12, 13, 14 | 11, 12, 12 | impossible | impossible |
+  | 15 | 12 / 13 | possible / impossible | found / impossible |
+  | 16 | 13 / 14 | possible / impossible | found / impossible |
+  | 17 | 14 | impossible (Cariboni 2022) | re-run in progress |
 
-Every configuration it reports is re-checked by `scripts/verify.py`, an
-independent verifier that shares no code with the search.
+* The symmetry reductions lose nothing: on 13 x 13 and 14 x 14 the unreduced
+  search and the reduced search find exactly the same classes of solutions up
+  to symmetry (63 and 61,331). Unit tests check this and the exactness of
+  every reduction on all small grids.
+* Every configuration the program reports is re-checked by
+  `scripts/verify.py`, an independent verifier sharing no code with the
+  search.
 
 ## Other problems explored
 

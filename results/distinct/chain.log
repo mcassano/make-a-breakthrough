@@ -3,3 +3,5 @@ n=15 k=13: NONE (1.012e10 nodes, 199.6s, 10 threads, Options { span: true, mirro
 === n=16 k=14 started 2026-09-28T21:30:25Z
 n=16 k=14: NONE (4.820e10 nodes, 1106.3s, 10 threads, Options { span: true, mirror: true, first_only: true, order: Onion })
 === n=18 k=15 started 2026-09-28T21:48:51Z
+n=18 k=15: NONE (1.985e12 nodes, 44294.2s, 10 threads, Options { span: true, mirror: true, first_only: true, order: Onion })
+=== n=17 k=14 started 2026-09-29T10:07:05Z
